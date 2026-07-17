@@ -9,6 +9,7 @@ import {
   List,
   open,
   openExtensionPreferences,
+  popToRoot,
   PopToRootType,
   showToast,
   Toast,
@@ -187,7 +188,7 @@ function CaptureForm({
 
     setIsLoading(true);
     const toast = await showToast({ style: Toast.Style.Animated, title: "Reading vault patterns" });
-    await closeMainWindow({ clearRootSearch: true, popToRootType: PopToRootType.Immediate });
+    await closeMainWindow({ clearRootSearch: true, popToRootType: PopToRootType.Suspended });
 
     try {
       const startedAt = Date.now();
@@ -222,7 +223,9 @@ function CaptureForm({
       toast.style = Toast.Style.Failure;
       toast.title = "Could not create note";
       toast.message = error instanceof Error ? error.message : String(error);
+    } finally {
       setIsLoading(false);
+      await popToRoot({ clearSearchBar: true });
     }
   }
 
