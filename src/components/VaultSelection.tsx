@@ -1,16 +1,25 @@
-import { Action, ActionPanel, Icon, List } from "@raycast/api";
+import { Action, ActionPanel, Icon, List, useNavigation } from "@raycast/api";
 
 import { ObsidianVault } from "../types";
 
 export function VaultSelection({
   vaults,
   onSelect,
+  popAfterSelect = false,
 }: {
   vaults: ObsidianVault[];
-  onSelect: (vault: ObsidianVault) => void;
+  onSelect: (vault: ObsidianVault) => void | Promise<void>;
+  popAfterSelect?: boolean;
 }) {
+  const { pop } = useNavigation();
+
+  async function select(vault: ObsidianVault) {
+    await onSelect(vault);
+    if (popAfterSelect) pop();
+  }
+
   return (
-    <List navigationTitle="Select Obsidian Vault" searchBarPlaceholder="Search vaults...">
+    <List searchBarPlaceholder="Search vaults...">
       {vaults.map((vault) => (
         <List.Item
           key={vault.path}
@@ -19,7 +28,7 @@ export function VaultSelection({
           subtitle={vault.path}
           actions={
             <ActionPanel>
-              <Action title="Use This Vault" icon={Icon.CheckCircle} onAction={() => onSelect(vault)} />
+              <Action title="Use This Vault" icon={Icon.CheckCircle} onAction={() => select(vault)} />
             </ActionPanel>
           }
         />

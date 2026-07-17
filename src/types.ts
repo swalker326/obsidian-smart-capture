@@ -8,7 +8,7 @@ export interface ProviderConfig {
   apiKey: string;
 }
 
-export interface ExtensionPreferences {
+export interface ExtensionPreferences extends ProviderConfig {
   openAfterCreate: boolean;
 }
 
@@ -38,17 +38,3 @@ export interface RecentCapture extends CreatedNote {
   vaultPath: string;
   createdAt: string;
 }
-
-export const defaultModels: Record<Provider, string> = {
-  openrouter: "moonshotai/kimi-k2.6",
-  openai: "gpt-5-mini",
-  anthropic: "claude-haiku-4-5",
-  gemini: "gemini-3-flash-preview",
-};
-
-export const providerNames: Record<Provider, string> = {
-  openrouter: "OpenRouter",
-  openai: "OpenAI",
-  anthropic: "Anthropic",
-  gemini: "Google Gemini",
-};

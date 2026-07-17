@@ -5,17 +5,17 @@ A focused Raycast command for writing a note and letting AI choose its existing 
 ## How it works
 
 1. Select a detected Obsidian vault on first launch. The extension remembers the choice.
-2. Configure OpenRouter, OpenAI, Anthropic, or Gemini in the first-run form.
-3. Run **Smart Capture** and choose **New Note**, or run **New Smart Capture** to open the editor directly.
+2. Configure OpenRouter, OpenAI, Anthropic, or Gemini in the extension preferences.
+3. Run **Smart Capture** and choose **New Note**, or run **Capture Note** to open the editor directly.
 4. The extension builds a bounded profile from folder names, note titles, index notes, and short content excerpts.
 5. AI returns a structured title, destination, and confidence.
 6. The note is written without overwriting existing files. Uncertain notes go to `00 Inbox`.
 
-`Smart Capture` opens a dashboard with the five most recent captures. `New Smart Capture` opens the editor directly and is intended for a global Raycast hotkey.
+`Smart Capture` opens a dashboard with the five most recent captures. `Capture Note` opens the editor directly and is intended for a global Raycast hotkey.
 
 ## Privacy and security
 
-- The provider configuration is stored in Raycast's extension-scoped encrypted local database.
+- The provider API key is stored as a secure Raycast password preference.
 - The selected vault path is stored in the same extension-scoped local database.
 - Requests go directly from the extension to the configured provider.
 - Captured text and a bounded vault profile are sent to that provider for classification.

@@ -11,6 +11,49 @@
   "license": "MIT",
   "preferences": [
     {
+      "name": "provider",
+      "type": "dropdown",
+      "title": "AI Provider",
+      "description": "Provider used to classify and organize captured notes",
+      "default": "openrouter",
+      "required": true,
+      "data": [
+        {
+          "title": "OpenRouter",
+          "value": "openrouter"
+        },
+        {
+          "title": "OpenAI",
+          "value": "openai"
+        },
+        {
+          "title": "Anthropic",
+          "value": "anthropic"
+        },
+        {
+          "title": "Google Gemini",
+          "value": "gemini"
+        }
+      ]
+    },
+    {
+      "name": "model",
+      "type": "textfield",
+      "title": "Model",
+      "description": "Model ID supported by the selected provider",
+      "placeholder": "moonshotai/kimi-k2.6",
+      "default": "moonshotai/kimi-k2.6",
+      "required": true
+    },
+    {
+      "name": "apiKey",
+      "type": "password",
+      "title": "Provider API Key",
+      "description": "API key sent only to the selected AI provider",
+      "placeholder": "Enter your provider API key",
+      "required": true
+    },
+    {
       "name": "openAfterCreate",
       "type": "checkbox",
       "title": "Open Created Note",
@@ -30,16 +73,9 @@
     },
     {
       "name": "new-capture",
-      "title": "New Smart Capture",
+      "title": "Capture Note",
       "subtitle": "Obsidian",
       "description": "Open the Smart Capture editor directly",
-      "mode": "view"
-    },
-    {
-      "name": "configure-provider",
-      "title": "Configure AI Provider",
-      "subtitle": "Obsidian Smart Capture",
-      "description": "Configure the AI provider used to organize notes",
       "mode": "view"
     }
   ],

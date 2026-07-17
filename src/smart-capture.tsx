@@ -8,6 +8,7 @@ import {
   Icon,
   List,
   open,
+  openExtensionPreferences,
   PopToRootType,
   showToast,
   Toast,
@@ -15,17 +16,9 @@ import {
 import path from "node:path";
 import { useEffect, useState } from "react";
 
-import { ProviderSetup } from "./components/ProviderSetup";
 import { VaultSelection } from "./components/VaultSelection";
 import { discoverObsidianVaults } from "./obsidian-vaults";
-import {
-  addRecentCapture,
-  getProviderConfig,
-  getRecentCaptures,
-  getSelectedVault,
-  removeSelectedVault,
-  saveSelectedVault,
-} from "./storage";
+import { addRecentCapture, getRecentCaptures, getSelectedVault, saveSelectedVault } from "./storage";
 import { ExtensionPreferences, ObsidianVault, ProviderConfig, RecentCapture } from "./types";
 import { buildVaultProfile, createNote } from "./vault";
 
@@ -34,16 +27,20 @@ export default function SmartCaptureCommand() {
 }
 
 export function SmartCaptureApp({ startInCapture = false }: { startInCapture?: boolean }) {
-  const [config, setConfig] = useState<ProviderConfig>();
+  const preferences = getPreferenceValues<ExtensionPreferences>();
+  const config: ProviderConfig = {
+    provider: preferences.provider,
+    model: preferences.model,
+    apiKey: preferences.apiKey,
+  };
   const [vaults, setVaults] = useState<ObsidianVault[]>([]);
   const [selectedVault, setSelectedVault] = useState<ObsidianVault>();
   const [recentCaptures, setRecentCaptures] = useState<RecentCapture[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    Promise.all([getProviderConfig(), discoverObsidianVaults()])
-      .then(async ([providerConfig, discoveredVaults]) => {
-        setConfig(providerConfig);
+    discoverObsidianVaults()
+      .then(async (discoveredVaults) => {
         setVaults(discoveredVaults);
         const rememberedVault = await getSelectedVault(discoveredVaults);
         setSelectedVault(rememberedVault);
@@ -51,6 +48,12 @@ export function SmartCaptureApp({ startInCapture = false }: { startInCapture?: b
       })
       .finally(() => setLoading(false));
   }, []);
+
+  const selectVault = async (vault: ObsidianVault) => {
+    await saveSelectedVault(vault);
+    setSelectedVault(vault);
+    setRecentCaptures(await getRecentCaptures(vault.path));
+  };
 
   if (loading) return <Detail isLoading />;
   if (!selectedVault) {
@@ -60,72 +63,50 @@ export function SmartCaptureApp({ startInCapture = false }: { startInCapture?: b
       );
     }
 
-    return (
-      <VaultSelection
-        vaults={vaults}
-        onSelect={async (vault) => {
-          await saveSelectedVault(vault);
-          setSelectedVault(vault);
-          setRecentCaptures(await getRecentCaptures(vault.path));
-        }}
-      />
-    );
+    return <VaultSelection vaults={vaults} onSelect={selectVault} />;
   }
-  if (!config) return <ProviderSetup onSaved={setConfig} />;
 
-  const changeVault = async () => {
-    await removeSelectedVault();
-    setSelectedVault(undefined);
-    setRecentCaptures([]);
-  };
+  const vaultSelection = <VaultSelection vaults={vaults} onSelect={selectVault} popAfterSelect />;
   const captureForm = (
-    <CaptureForm config={config} vault={selectedVault} onConfigChange={setConfig} onChangeVault={changeVault} />
+    <CaptureForm
+      config={config}
+      vault={selectedVault}
+      vaultSelection={vaultSelection}
+      navigationTitle={startInCapture ? undefined : `New Capture - ${selectedVault.name}`}
+    />
   );
 
   if (startInCapture) return captureForm;
 
   return (
     <CaptureDashboard
-      config={config}
       vault={selectedVault}
       recentCaptures={recentCaptures}
       captureForm={captureForm}
-      onConfigChange={setConfig}
-      onChangeVault={changeVault}
+      vaultSelection={vaultSelection}
     />
   );
 }
 
 function CaptureDashboard({
-  config,
   vault,
   recentCaptures,
   captureForm,
-  onConfigChange,
-  onChangeVault,
+  vaultSelection,
 }: {
-  config: ProviderConfig;
   vault: ObsidianVault;
   recentCaptures: RecentCapture[];
   captureForm: React.ReactNode;
-  onConfigChange: (value: ProviderConfig) => void;
-  onChangeVault: () => void;
+  vaultSelection: React.ReactNode;
 }) {
   return (
-    <List navigationTitle={`Smart Capture - ${vault.name}`} searchBarPlaceholder="Search recent captures...">
+    <List searchBarPlaceholder="Search recent captures...">
       <List.Section title="Capture">
         <List.Item
           icon={Icon.Plus}
           title="New Note"
           subtitle={`Capture directly into ${vault.name}`}
-          actions={
-            <DashboardActions
-              config={config}
-              captureForm={captureForm}
-              onConfigChange={onConfigChange}
-              onChangeVault={onChangeVault}
-            />
-          }
+          actions={<DashboardActions captureForm={captureForm} vaultSelection={vaultSelection} />}
         />
       </List.Section>
       <List.Section title="Recent Captures" subtitle={`${recentCaptures.length} of 5`}>
@@ -139,13 +120,7 @@ function CaptureDashboard({
               subtitle={folder === "." ? vault.name : folder}
               accessories={[{ date: new Date(capture.createdAt), tooltip: "Created" }]}
               actions={
-                <DashboardActions
-                  config={config}
-                  captureForm={captureForm}
-                  recentCapture={capture}
-                  onConfigChange={onConfigChange}
-                  onChangeVault={onChangeVault}
-                />
+                <DashboardActions captureForm={captureForm} vaultSelection={vaultSelection} recentCapture={capture} />
               }
             />
           );
@@ -156,17 +131,13 @@ function CaptureDashboard({
 }
 
 function DashboardActions({
-  config,
   captureForm,
+  vaultSelection,
   recentCapture,
-  onConfigChange,
-  onChangeVault,
 }: {
-  config: ProviderConfig;
   captureForm: React.ReactNode;
+  vaultSelection: React.ReactNode;
   recentCapture?: RecentCapture;
-  onConfigChange: (value: ProviderConfig) => void;
-  onChangeVault: () => void;
 }) {
   return (
     <ActionPanel title={recentCapture?.title}>
@@ -186,12 +157,8 @@ function DashboardActions({
         />
       </ActionPanel.Section>
       <ActionPanel.Section>
-        <Action.Push
-          title="Configure AI Provider"
-          icon={Icon.Gear}
-          target={<ProviderSetup initialConfig={config} onSaved={onConfigChange} />}
-        />
-        <Action title="Change Vault" icon={Icon.Folder} onAction={onChangeVault} />
+        <Action title="Open Extension Preferences" icon={Icon.Gear} onAction={openExtensionPreferences} />
+        <Action.Push title="Change Vault" icon={Icon.Folder} target={vaultSelection} />
       </ActionPanel.Section>
     </ActionPanel>
   );
@@ -200,13 +167,13 @@ function DashboardActions({
 function CaptureForm({
   config,
   vault,
-  onConfigChange,
-  onChangeVault,
+  vaultSelection,
+  navigationTitle,
 }: {
   config: ProviderConfig;
   vault: ObsidianVault;
-  onConfigChange: (value: ProviderConfig) => void;
-  onChangeVault: () => void;
+  vaultSelection: React.ReactNode;
+  navigationTitle?: string;
 }) {
   const preferences = getPreferenceValues<ExtensionPreferences>();
   const [isLoading, setIsLoading] = useState(false);
@@ -262,16 +229,12 @@ function CaptureForm({
   return (
     <Form
       isLoading={isLoading}
-      navigationTitle={`New Capture - ${vault.name}`}
+      navigationTitle={navigationTitle}
       actions={
         <ActionPanel>
           <Action.SubmitForm title={`Capture to ${vault.name}`} icon={Icon.Wand} onSubmit={submit} />
-          <Action.Push
-            title="Configure AI Provider"
-            icon={Icon.Gear}
-            target={<ProviderSetup initialConfig={config} onSaved={onConfigChange} />}
-          />
-          <Action title="Change Vault" icon={Icon.Folder} onAction={onChangeVault} />
+          <Action title="Open Extension Preferences" icon={Icon.Gear} onAction={openExtensionPreferences} />
+          <Action.Push title="Change Vault" icon={Icon.Folder} target={vaultSelection} />
         </ActionPanel>
       }
     >
