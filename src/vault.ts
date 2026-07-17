@@ -119,6 +119,16 @@ function isInside(parent: string, child: string): boolean {
   return relative !== "" && !relative.startsWith("..") && !path.isAbsolute(relative);
 }
 
+export async function deleteNote(vaultPath: string, notePath: string): Promise<void> {
+  const root = path.resolve(vaultPath);
+  const target = path.resolve(notePath);
+  if (!isInside(root, target) || path.extname(target).toLowerCase() !== ".md") {
+    throw new Error("The selected note is not a Markdown file inside this vault.");
+  }
+
+  await fs.unlink(target);
+}
+
 export async function createNote(
   vaultPath: string,
   classification: Classification,

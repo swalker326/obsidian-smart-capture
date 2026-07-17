@@ -42,3 +42,18 @@ export async function addRecentCapture(capture: RecentCapture): Promise<void> {
   const next = [capture, ...captures.filter((item) => item.absolutePath !== capture.absolutePath)].slice(0, 25);
   await LocalStorage.setItem(recentCapturesKey, JSON.stringify(next));
 }
+
+export async function removeRecentCapture(absolutePath: string): Promise<void> {
+  const stored = await LocalStorage.getItem<string>(recentCapturesKey);
+  if (!stored) return;
+
+  try {
+    const captures = JSON.parse(stored) as RecentCapture[];
+    await LocalStorage.setItem(
+      recentCapturesKey,
+      JSON.stringify(captures.filter((capture) => capture.absolutePath !== absolutePath))
+    );
+  } catch {
+    await LocalStorage.removeItem(recentCapturesKey);
+  }
+}

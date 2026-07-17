@@ -4,7 +4,7 @@ import path from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
 
-import { buildVaultProfile, containsLikelySecret, createNote } from "./vault";
+import { buildVaultProfile, containsLikelySecret, createNote, deleteNote } from "./vault";
 
 const temporaryDirectories: string[] = [];
 
@@ -53,5 +53,27 @@ describe("createNote", () => {
 
     expect(created.relativePath).toBe(path.join("20 Work", "TAP", "Chat 2.md"));
     expect(await fs.readFile(created.absolutePath, "utf8")).toBe("New content\n");
+  });
+});
+
+describe("deleteNote", () => {
+  it("deletes a Markdown note inside the vault", async () => {
+    const root = await createVault();
+    const note = path.join(root, "00 Inbox", "Needs Review.md");
+
+    await deleteNote(root, note);
+
+    await expect(fs.stat(note)).rejects.toMatchObject({ code: "ENOENT" });
+  });
+
+  it("refuses to delete a file outside the vault", async () => {
+    const root = await createVault();
+    const outsideDirectory = await fs.mkdtemp(path.join(os.tmpdir(), "smart-capture-outside-"));
+    temporaryDirectories.push(outsideDirectory);
+    const note = path.join(outsideDirectory, "Keep Me.md");
+    await fs.writeFile(note, "Do not delete");
+
+    await expect(deleteNote(root, note)).rejects.toThrow("not a Markdown file inside this vault");
+    expect(await fs.readFile(note, "utf8")).toBe("Do not delete");
   });
 });

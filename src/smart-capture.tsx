@@ -1,7 +1,9 @@
 import {
   Action,
   ActionPanel,
+  Alert,
   closeMainWindow,
+  confirmAlert,
   Detail,
   Form,
   getPreferenceValues,
@@ -19,9 +21,15 @@ import { useEffect, useState } from "react";
 
 import { VaultSelection } from "./components/VaultSelection";
 import { discoverObsidianVaults } from "./obsidian-vaults";
-import { addRecentCapture, getRecentCaptures, getSelectedVault, saveSelectedVault } from "./storage";
+import {
+  addRecentCapture,
+  getRecentCaptures,
+  getSelectedVault,
+  removeRecentCapture,
+  saveSelectedVault,
+} from "./storage";
 import { ExtensionPreferences, ObsidianVault, ProviderConfig, RecentCapture } from "./types";
-import { buildVaultProfile, createNote } from "./vault";
+import { buildVaultProfile, createNote, deleteNote } from "./vault";
 
 export default function SmartCaptureCommand() {
   return <SmartCaptureApp />;
@@ -67,6 +75,28 @@ export function SmartCaptureApp({ startInCapture = false }: { startInCapture?: b
     return <VaultSelection vaults={vaults} onSelect={selectVault} />;
   }
 
+  const deleteCapture = async (capture: RecentCapture) => {
+    const confirmed = await confirmAlert({
+      title: `Delete ${capture.title}?`,
+      message: `This permanently deletes ${capture.relativePath} from ${selectedVault.name}. This cannot be undone.`,
+      primaryAction: { title: "Delete Note", style: Alert.ActionStyle.Destructive },
+    });
+    if (!confirmed) return;
+
+    try {
+      await deleteNote(selectedVault.path, capture.absolutePath);
+      await removeRecentCapture(capture.absolutePath);
+      setRecentCaptures((current) => current.filter((item) => item.absolutePath !== capture.absolutePath));
+      await showToast({ style: Toast.Style.Success, title: `Deleted ${capture.title}` });
+    } catch (error) {
+      await showToast({
+        style: Toast.Style.Failure,
+        title: "Could not delete note",
+        message: error instanceof Error ? error.message : String(error),
+      });
+    }
+  };
+
   const vaultSelection = <VaultSelection vaults={vaults} onSelect={selectVault} popAfterSelect />;
   const captureForm = (
     <CaptureForm
@@ -85,6 +115,7 @@ export function SmartCaptureApp({ startInCapture = false }: { startInCapture?: b
       recentCaptures={recentCaptures}
       captureForm={captureForm}
       vaultSelection={vaultSelection}
+      onDeleteCapture={deleteCapture}
     />
   );
 }
@@ -94,11 +125,13 @@ function CaptureDashboard({
   recentCaptures,
   captureForm,
   vaultSelection,
+  onDeleteCapture,
 }: {
   vault: ObsidianVault;
   recentCaptures: RecentCapture[];
   captureForm: React.ReactNode;
   vaultSelection: React.ReactNode;
+  onDeleteCapture: (capture: RecentCapture) => void | Promise<void>;
 }) {
   return (
     <List searchBarPlaceholder="Search recent captures...">
@@ -107,7 +140,13 @@ function CaptureDashboard({
           icon={Icon.Plus}
           title="New Note"
           subtitle={`Capture directly into ${vault.name}`}
-          actions={<DashboardActions captureForm={captureForm} vaultSelection={vaultSelection} />}
+          actions={
+            <DashboardActions
+              captureForm={captureForm}
+              vaultSelection={vaultSelection}
+              onDeleteCapture={onDeleteCapture}
+            />
+          }
         />
       </List.Section>
       <List.Section title="Recent Captures" subtitle={`${recentCaptures.length} of 5`}>
@@ -121,7 +160,12 @@ function CaptureDashboard({
               subtitle={folder === "." ? vault.name : folder}
               accessories={[{ date: new Date(capture.createdAt), tooltip: "Created" }]}
               actions={
-                <DashboardActions captureForm={captureForm} vaultSelection={vaultSelection} recentCapture={capture} />
+                <DashboardActions
+                  captureForm={captureForm}
+                  vaultSelection={vaultSelection}
+                  recentCapture={capture}
+                  onDeleteCapture={onDeleteCapture}
+                />
               }
             />
           );
@@ -135,10 +179,12 @@ function DashboardActions({
   captureForm,
   vaultSelection,
   recentCapture,
+  onDeleteCapture,
 }: {
   captureForm: React.ReactNode;
   vaultSelection: React.ReactNode;
   recentCapture?: RecentCapture;
+  onDeleteCapture: (capture: RecentCapture) => void | Promise<void>;
 }) {
   return (
     <ActionPanel title={recentCapture?.title}>
@@ -161,6 +207,16 @@ function DashboardActions({
         <Action title="Open Extension Preferences" icon={Icon.Gear} onAction={openExtensionPreferences} />
         <Action.Push title="Change Vault" icon={Icon.Folder} target={vaultSelection} />
       </ActionPanel.Section>
+      {recentCapture && (
+        <ActionPanel.Section>
+          <Action
+            title="Delete Note"
+            icon={Icon.Trash}
+            style={Action.Style.Destructive}
+            onAction={() => onDeleteCapture(recentCapture)}
+          />
+        </ActionPanel.Section>
+      )}
     </ActionPanel>
   );
 }
