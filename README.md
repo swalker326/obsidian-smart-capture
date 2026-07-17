@@ -1,4 +1,4 @@
-# Obsidian Smart Capture
+# Obsidian AI Smart Capture
 
 A focused Raycast command for writing a note and letting AI choose its existing folder in an Obsidian vault.
 

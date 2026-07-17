@@ -87,7 +87,7 @@ async function askOpenRouter(
     headers: {
       Authorization: `Bearer ${config.apiKey}`,
       "Content-Type": "application/json",
-      "X-Title": "Obsidian Smart Capture",
+      "X-Title": "Obsidian AI Smart Capture",
     },
     body: JSON.stringify({
       model: config.model,

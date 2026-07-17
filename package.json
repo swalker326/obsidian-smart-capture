@@ -1,7 +1,7 @@
 {
   "$schema": "https://www.raycast.com/schemas/extension.json",
-  "name": "obsidian-smart-capture",
-  "title": "Obsidian Smart Capture",
+  "name": "obsidian-ai-smart-capture",
+  "title": "Obsidian AI Smart Capture",
   "description": "Capture a note and let AI file it in your Obsidian vault",
   "icon": "icon.png",
   "author": "8460808_swalker326",
